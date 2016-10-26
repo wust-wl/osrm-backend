@@ -43,7 +43,7 @@ class NodeBasedGraphWalker
     boost::optional<std::pair<NodeID, EdgeID>> TraverseRoad(NodeID starting_at_node_id,
                                                             EdgeID following_edge_id,
                                                             accumulator_type &accumulator,
-                                                            const selector_type &selector);
+                                                            const selector_type &selector) const;
 
   private:
     const util::NodeBasedDynamicGraph &node_based_graph;
@@ -141,7 +141,7 @@ boost::optional<std::pair<NodeID, EdgeID>>
 NodeBasedGraphWalker::TraverseRoad(NodeID current_node_id,
                                    EdgeID current_edge_id,
                                    accumulator_type &accumulator,
-                                   const selector_type &selector)
+                                   const selector_type &selector) const
 {
     /*
      * since graph hopping is used in many ways, we don't generate an adjusted intersection
@@ -191,6 +191,60 @@ NodeBasedGraphWalker::TraverseRoad(NodeID current_node_id,
         "Reached safety hop limit. Graph hopper seems to have been caught in an endless loop");
     return {};
 }
+
+struct SkipTrafficSignalBarrierRoadSelector
+{
+    boost::optional<EdgeID> operator()(const NodeID,
+                                       const EdgeID,
+                                       const IntersectionView &intersection,
+                                       const util::NodeBasedDynamicGraph &) const
+    {
+        if (intersection.isTrafficSignalOrBarrier())
+        {
+            return boost::make_optional(intersection[1].eid);
+        }
+        else
+        {
+            return boost::none;
+        }
+    }
+};
+
+struct DistanceToNextIntersectionAccumulator
+{
+    DistanceToNextIntersectionAccumulator(
+        const extractor::guidance::CoordinateExtractor &extractor_,
+        const util::NodeBasedDynamicGraph &graph_,
+        const double threshold)
+        : extractor{extractor_}, graph{graph_}, threshold{threshold}
+    {
+    }
+
+    bool terminate()
+    {
+        if (distance > threshold)
+        {
+            too_far_away = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    void update(const NodeID start, const EdgeID onto, const NodeID)
+    {
+        using namespace util::coordinate_calculation;
+
+        const auto coords = extractor.GetForwardCoordinatesAlongRoad(start, onto);
+        distance += getLength(coords, &haversineDistance);
+    }
+
+    const extractor::guidance::CoordinateExtractor &extractor;
+    const util::NodeBasedDynamicGraph &graph;
+    const double threshold;
+    bool too_far_away = false;
+    double distance = 0.;
+};
 
 } // namespace guidance
 } // namespace extractor

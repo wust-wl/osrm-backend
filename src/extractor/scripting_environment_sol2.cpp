@@ -241,8 +241,6 @@ void Sol2ScriptingEnvironment::InitContext(Sol2ScriptingContext &context)
         &ExtractionWay::roundabout,
         "circular",
         &ExtractionWay::circular,
-        "is_access_restricted",
-        &ExtractionWay::is_access_restricted,
         "is_startpoint",
         &ExtractionWay::is_startpoint,
         "ignore_in_grid",

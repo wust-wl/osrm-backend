@@ -46,7 +46,6 @@ struct ExtractionWay
         roundabout = false;
         circular = false;
         is_startpoint = true;
-        is_access_restricted = false;
         ignore_in_grid = false;
         name.clear();
         ref.clear();

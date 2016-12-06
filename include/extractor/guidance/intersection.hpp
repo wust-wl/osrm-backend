@@ -1,15 +1,22 @@
 #ifndef OSRM_EXTRACTOR_GUIDANCE_INTERSECTION_HPP_
 #define OSRM_EXTRACTOR_GUIDANCE_INTERSECTION_HPP_
 
+#include <cstdint>
 #include <string>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
-#include "extractor/guidance/turn_instruction.hpp"
 #include "util/bearing.hpp"
 #include "util/guidance/toolkit.hpp"
 #include "util/node_based_graph.hpp"
 #include "util/typedefs.hpp" // EdgeID
+
+#include "extractor/guidance/turn_instruction.hpp"
+
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/algorithm/find_if.hpp>
 
 namespace osrm
 {
@@ -39,6 +46,13 @@ inline auto makeCompareAngularDeviation(const double angle)
     return [angle](const auto &lhs, const auto &rhs) {
         return util::guidance::angularDeviation(lhs.angle, angle) <
                util::guidance::angularDeviation(rhs.angle, angle);
+    };
+}
+
+inline auto makeExtractLanesForRoad(const util::NodeBasedDynamicGraph &node_based_graph)
+{
+    return [&node_based_graph](const auto &road) {
+        return node_based_graph.GetEdgeData(road.eid).road_classification.GetNumberOfLanes();
     };
 }
 
@@ -119,6 +133,52 @@ template <typename Self> struct EnableIntersectionOps
         return std::min_element(self()->begin(), self()->end(), comp);
     }
 
+    // same as find closests turn but with an additional predicate to allow filtering
+    template <typename UnaryPredicate>
+    auto findClosestTurn(const double angle, const UnaryPredicate filter) const
+    {
+        const auto candidate = std::min_element(
+            self()->begin(), self()->end(), [angle, &filter](const auto &lhs, const auto &rhs) {
+                const auto filtered_lhs = filter(lhs), filtered_rhs = filter(rhs);
+                const auto deviation_lhs = util::guidance::angularDeviation(lhs.angle, angle),
+                           deviation_rhs = util::guidance::angularDeviation(rhs.angle, angle);
+                return std::tie(filtered_lhs, deviation_lhs) <
+                       std::tie(filtered_rhs, deviation_rhs);
+            });
+
+        // make sure only to return valid elements
+        return filter(*candidate) ? self()->end() : candidate;
+    }
+
+    // same as closest turn, but for bearings
+    auto findClosestBearing(double bearing) const
+    {
+        auto comp = makeCompareShapeDataByBearing(bearing);
+        return std::min_element(self()->begin, self()->end(), comp);
+    }
+
+    // search a given eid in the intersection
+    auto findEid(const EdgeID eid) const
+    {
+        return std::find_if(intersection.begin(), intersection.end(), [eid](const auto &road) {
+            return road.eid == eid;
+        });
+    }
+
+    // find the maximum value based on a conversion operator and a predefined initial value
+    template <typename UnaryPredicate>
+    auto findMaximum(const UnaryPredicate converter, std::result_of<UnaryPredicate> initial)
+    {
+        const auto extract_maximal_value = [&initial](const auto value) {
+            initial = std::max(initial, value);
+            return false;
+        };
+
+        const auto view = *self() | boost::adaptors::transformed(converter);
+        boost::range::find_if(view, extract_maximal_value);
+        return initial;
+    };
+
   private:
     auto self() { return static_cast<Self *>(this); }
     auto self() const { return static_cast<const Self *>(this); }
@@ -146,11 +206,9 @@ struct Intersection final : std::vector<ConnectedRoad>,         //
      * allows checking intersections for validity
      */
     bool valid() const;
-
-    // given all possible turns, which is the highest connected number of lanes per turn. This value
-    // is used, for example, during generation of intersections.
-    std::uint8_t getHighestConnectedLaneCount(const util::NodeBasedDynamicGraph &) const;
 };
+
+} // namespace intersection_helpers
 
 } // namespace guidance
 } // namespace extractor

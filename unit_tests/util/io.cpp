@@ -44,8 +44,7 @@ BOOST_AUTO_TEST_CASE(io_nonexistent_file)
     catch (const osrm::util::exception &e)
     {
         std::cout << e.what() << std::endl;
-        BOOST_REQUIRE(std::string(e.what()) ==
-                      "Error opening non_existent_test_io.tmp");
+        BOOST_REQUIRE(std::string(e.what()) == "Error opening non_existent_test_io.tmp");
     }
 }
 

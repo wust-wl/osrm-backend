@@ -26,9 +26,9 @@ operator()(const NodeID intersection_node,
 {
     // request the number of lanes. This process needs to be in sync with what happens over at
     // intersection_generator
-    const auto road_to_number_of_lanes = guidance::makeExtractLanesForRoad(node_based_graph);
+    const auto road_as_number_of_lanes = guidance::makeExtractLanesForRoad(node_based_graph);
     const auto intersection_lanes =
-        intersection.findMaximum(road_to_number_of_lanes);
+        intersection.findMaximum(road_as_number_of_lanes);
 
     std::vector<util::Coordinate> coordinates;
     coordinates.reserve(intersection.size());

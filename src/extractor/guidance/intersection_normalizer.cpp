@@ -35,6 +35,9 @@ IntersectionNormalizer::IntersectionNormalizer(
 std::pair<IntersectionShape, std::vector<std::pair<EdgeID, EdgeID>>> IntersectionNormalizer::
 operator()(const NodeID node_at_intersection, IntersectionShape intersection) const
 {
+    std::cout << "Processing:\n";
+    for( auto road : intersection )
+        std::cout << "\t" << road.eid << " " << road.bearing << std::endl;
     const auto intersection_copy = intersection;;
     auto merged_shape_and_merges =
         MergeSegregatedRoads(node_at_intersection, std::move(intersection));
@@ -120,12 +123,8 @@ bool IntersectionNormalizer::InnerCanMerge(const NodeID node_at_intersection,
             second_data.name_id, first_data.name_id, name_table, street_name_suffix_table))
         return false;
 
-    if (!mergable_road_detector.CanMergeRoad(
-            node_at_intersection, intersection[first_index], intersection[second_index]))
-        return false;
-
-    else
-        return true;
+    return mergable_road_detector.CanMergeRoad(
+            node_at_intersection, intersection[first_index], intersection[second_index]);
 }
 
 /*

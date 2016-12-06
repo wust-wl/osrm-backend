@@ -39,7 +39,7 @@ bool MergableRoadDetector::CanMergeRoad(const NodeID intersection_node,
                                         const IntersectionShapeData &rhs) const
 {
     // roads should be somewhat close
-    if (angularDeviation(lhs.bearing, rhs.bearing) > 60)
+    if (angularDeviation(lhs.bearing, rhs.bearing) > 80)
         return false;
 
     const auto &lhs_edge_data = node_based_graph.GetEdgeData(lhs.eid);
@@ -62,20 +62,26 @@ bool MergableRoadDetector::CanMergeRoad(const NodeID intersection_node,
         return node_based_graph.GetTarget(road.eid);
     };
 
+    std::cout << "Check" << std::endl;
+
     // TODO might have to skip over trivial intersections
     if (road_target(lhs) == intersection_node || road_target(lhs) == intersection_node)
         return false;
 
+    std::cout << "Targets" << std::endl;
     // Don't merge link roads
     if (IsLinkRoad(intersection_node, lhs) || IsLinkRoad(intersection_node, rhs))
         return false;
 
+    std::cout << "Links" << std::endl;
     if (IsNarrowTriangle(intersection_node, lhs, rhs))
         return true;
 
+    std::cout << "No-Triangle" << std::endl;
     if (HaveSameDirection(intersection_node, lhs, rhs))
         return true;
 
+    std::cout << "Not parallel" << std::endl;
     // if (connectAgain(intersection_node, lhs, rhs, node_based_graph, intersection_generator))
 
     return false;
@@ -208,6 +214,7 @@ bool MergableRoadDetector::HaveSameDirection(const NodeID intersection_node,
     std::tie(distance_traversed_to_the_left, coordinates_to_the_left) =
         getCoordinatesAlongWay(lhs.eid, distance_to_extract);
 
+    std::cout << "Distance Left: " << distance_traversed_to_the_left << std::endl;
     // quit early if the road is not very long
     if (distance_traversed_to_the_left <= 40)
         return false;
@@ -217,27 +224,28 @@ bool MergableRoadDetector::HaveSameDirection(const NodeID intersection_node,
 
     std::tie(distance_traversed_to_the_right, coordinates_to_the_right) =
         getCoordinatesAlongWay(rhs.eid, distance_to_extract);
+    std::cout << "Distance Right: " << distance_traversed_to_the_right << std::endl;
     if (distance_traversed_to_the_right <= 40)
         return false;
 
     coordinates_to_the_right = coordinate_extractor.SampleCoordinates(
         std::move(coordinates_to_the_right), distance_to_extract, 5);
+
     // extract the number of lanes for a road
-    const auto num_lanes = [this](const MergableRoadData &road) {
-        return std::max<std::uint8_t>(
+    const auto pruning_count = [this](const MergableRoadData &road) {
+        const auto num_lanes = std::max<std::uint8_t>(
             node_based_graph.GetEdgeData(road.eid).road_classification.GetNumberOfLanes(), 1);
+        const auto coordinates_to_remove = std::min(3, static_cast<int>(3.25 * num_lanes / 5));
+        return coordinates_to_remove;
     };
 
-    // we allow some basic deviation for all roads. If the there are more lanes present, we
-    // allow
-    // for a bit more deviation
-    const auto max_deviation = [&]() {
-        const auto lane_count = std::max<std::uint8_t>(2, std::max(num_lanes(lhs), num_lanes(rhs)));
-        return 4 * sqrt(lane_count);
-    }();
+    coordinates_to_the_left.erase(coordinates_to_the_left.begin(),
+                                  coordinates_to_the_left.begin() + pruning_count(lhs));
+    coordinates_to_the_right.erase(coordinates_to_the_right.begin(),
+                                   coordinates_to_the_right.begin() + pruning_count(rhs));
 
-    const auto are_parallel = util::coordinate_calculation::areParallel(
-        coordinates_to_the_left, coordinates_to_the_right, max_deviation);
+    const auto are_parallel = util::coordinate_calculation::areParallel(coordinates_to_the_left,
+                                                                        coordinates_to_the_right);
 
     return are_parallel;
 }

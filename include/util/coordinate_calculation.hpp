@@ -113,8 +113,7 @@ double findClosestDistance(const std::vector<util::Coordinate> &lhs,
 
 // checks if two sets of coordinates describe a parallel set of ways
 bool areParallel(const std::vector<util::Coordinate> &lhs,
-                 const std::vector<util::Coordinate> &rhs,
-                 const double std_deviation_limit);
+                 const std::vector<util::Coordinate> &rhs);
 
 double perpendicularDistance(const Coordinate segment_source,
                              const Coordinate segment_target,

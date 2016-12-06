@@ -13,6 +13,8 @@
 #include <numeric>
 #include <utility>
 
+#include "extractor/guidance/toolkit.hpp"
+
 namespace osrm
 {
 namespace util
@@ -375,32 +377,35 @@ std::vector<double> getDeviations(const std::vector<util::Coordinate> &from,
 }
 
 bool areParallel(const std::vector<util::Coordinate> &lhs,
-                 const std::vector<util::Coordinate> &rhs,
-                 const double std_deviation_limit)
+                 const std::vector<util::Coordinate> &rhs)
 {
-    // needs to consider percentiles, so we don't make errors in the beginning/end due to variations
-    // while splitting the road
-    const auto get_std_deviation = [](const std::vector<double> &values) {
-        if (values.empty())
-            return .0;
+    const auto regression_lhs = extractor::guidance::leastSquareRegression(lhs);
+    const auto regression_rhs = extractor::guidance::leastSquareRegression(rhs);
 
-        const auto mean = std::accumulate(std::begin(values), std::end(values), .0) / values.size();
-        const auto squared_difference = [mean](const double sum, const double element) {
-            return sum + (element - mean) * (element - mean);
-        };
-        const auto variance =
-            std::accumulate(std::begin(values), std::end(values), .0, squared_difference) /
-            values.size();
-        return sqrt(variance);
+    auto get_slope = [](const util::Coordinate from, const util::Coordinate to) {
+        const auto diff_lat = static_cast<int>(from.lat) - static_cast<int>(to.lat);
+        const auto diff_lon = static_cast<int>(from.lon) - static_cast<int>(to.lon);
+        if (diff_lon == 0)
+            return std::numeric_limits<double>::max();
+        return static_cast<double>(diff_lat) / static_cast<double>(diff_lon);
     };
 
-    const auto deviations_lhs = getDeviations(lhs, rhs);
-    const auto deviations_rhs = getDeviations(rhs, lhs);
+    const auto slope_lhs = get_slope(regression_lhs.first, regression_lhs.second);
+    const auto slope_rhs = get_slope(regression_rhs.first, regression_rhs.second);
 
-    const auto std_dev_lhs = get_std_deviation(deviations_lhs);
-    const auto std_dev_rhs = get_std_deviation(deviations_rhs);
+    const auto compute_ratio = [](auto dividend, auto divisor) {
+        if (std::abs(dividend) < std::abs(divisor))
+            std::swap(dividend, divisor);
+        auto save_divisor = (std::abs(divisor) < std::numeric_limits<decltype(divisor)>::epsilon())
+                                ? std::numeric_limits<decltype(divisor)>::epsilon()
+                                : divisor;
+        return dividend / save_divisor;
+    };
 
-    return std::max(std_dev_lhs, std_dev_rhs) < std_deviation_limit;
+    const auto ratio = compute_ratio(slope_lhs, slope_rhs);
+    // for small values, ratios are easily off, so we use absolute differences for them
+    std::cout << "Parallel: " << (ratio < 1.15 || std::abs(slope_lhs - slope_rhs) < 0.2) << std::endl;
+    return ratio < 1.15 || std::abs(slope_lhs - slope_rhs) < 0.2;
 }
 
 } // ns coordinate_calculation

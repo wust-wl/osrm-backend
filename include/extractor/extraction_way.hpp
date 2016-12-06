@@ -46,7 +46,6 @@ struct ExtractionWay
         roundabout = false;
         circular = false;
         is_startpoint = true;
-        ignore_in_grid = false;
         name.clear();
         ref.clear();
         pronunciation.clear();

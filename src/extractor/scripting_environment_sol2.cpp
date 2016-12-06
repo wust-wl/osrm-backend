@@ -243,8 +243,6 @@ void Sol2ScriptingEnvironment::InitContext(Sol2ScriptingContext &context)
         &ExtractionWay::circular,
         "is_startpoint",
         &ExtractionWay::is_startpoint,
-        "ignore_in_grid",
-        &ExtractionWay::ignore_in_grid,
         "duration",
         &ExtractionWay::duration,
         "road_classification",

@@ -1,6 +1,5 @@
 #include "extractor/guidance/intersection_normalizer.hpp"
 #include "extractor/guidance/toolkit.hpp"
-#include "util/angle_calculations.hpp"
 #include "util/bearing.hpp"
 #include "util/guidance/toolkit.hpp"
 
@@ -8,7 +7,7 @@
 #include "util/geojson_debug_logger.hpp"
 #include "util/geojson_debug_policies.hpp"
 
-using osrm::util::guidance::angularDeviation;
+using osrm::util::angularDeviation;
 
 namespace osrm
 {

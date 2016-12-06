@@ -3,6 +3,7 @@
 #include "extractor/guidance/toolkit.hpp"
 
 #include "util/guidance/toolkit.hpp"
+#include "util/bearing.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -12,7 +13,7 @@
 
 using EdgeData = osrm::util::NodeBasedDynamicGraph::EdgeData;
 using osrm::util::guidance::getTurnDirection;
-using osrm::util::guidance::angularDeviation;
+using osrm::util::angularDeviation;
 
 namespace osrm
 {

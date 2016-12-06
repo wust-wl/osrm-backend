@@ -1,8 +1,9 @@
 #include "extractor/guidance/mergable_road_detector.hpp"
 #include "extractor/guidance/node_based_graph_walker.hpp"
-#include "util/angle_calculations.hpp"
 
-using osrm::util::guidance::angularDeviation;
+#include "util/bearing.hpp"
+
+using osrm::util::angularDeviation;
 
 namespace osrm
 {
@@ -319,10 +320,8 @@ bool MergableRoadDetector::IsLinkRoad(const NodeID intersection_node,
     };
 
     const auto requested_name = extract_name(road);
-    const auto next_road_along_path = intersection_helpers::findClosestTurn(
-        accumulator.intersection,
-        STRAIGHT_ANGLE,
-        [requested_name, extract_name](const MergableRoadData &compare_road) {
+    const auto next_road_along_path = accumulator.intersection.findClosestTurn(
+        STRAIGHT_ANGLE, [requested_name, extract_name](const MergableRoadData &compare_road) {
             return requested_name != extract_name(compare_road);
         });
 
@@ -330,8 +329,7 @@ bool MergableRoadDetector::IsLinkRoad(const NodeID intersection_node,
     if (next_road_along_path == accumulator.intersection.end())
         return false;
 
-    const auto opposite_of_next_road_along_path = intersection_helpers::findClosestBearing(
-        next_intersection_along_road,
+    const auto opposite_of_next_road_along_path = next_intersection_along_road.findClosestBearing(
         restrictAngleToValidRange(next_road_along_path->bearing + 180));
 
     // we cannot be looking at the same road we came from

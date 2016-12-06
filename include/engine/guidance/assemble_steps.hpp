@@ -156,7 +156,7 @@ inline std::vector<RouteStep> assembleSteps(const datafacade::BaseDataFacade &fa
                     intersection.entry.push_back(entry_class.allowsEntry(idx));
                 }
                 std::int16_t bearing_in_driving_direction =
-                    util::bearing::reverseBearing(std::round(bearings.first));
+                    util::bearing::reverse(std::round(bearings.first));
                 maneuver = {intersection.location,
                             bearing_in_driving_direction,
                             bearings.second,
@@ -218,7 +218,7 @@ inline std::vector<RouteStep> assembleSteps(const datafacade::BaseDataFacade &fa
 
     intersection = {
         target_node.location,
-        std::vector<short>({static_cast<short>(util::bearing::reverseBearing(bearings.first))}),
+        std::vector<short>({static_cast<short>(util::bearing::reverse(bearings.first))}),
         std::vector<bool>({true}),
         0,
         Intersection::NO_INDEX,

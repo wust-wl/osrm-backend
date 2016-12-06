@@ -3,6 +3,7 @@
 
 #include <boost/assert.hpp>
 #include <string>
+#include <cmath>
 
 namespace osrm
 {
@@ -90,7 +91,7 @@ inline bool CheckInBounds(const int A, const int B, const int range)
     }
 }
 
-inline double reverseBearing(const double bearing)
+inline double reverse(const double bearing)
 {
     if (bearing >= 180)
         return bearing - 180.;
@@ -116,7 +117,7 @@ inline double reverseBearing(const double bearing)
 // % 360;
 // All other cases are handled by first rotating both bearings to an
 // entry_bearing of 0.
-inline double angleBetweenBearings(const double entry_bearing, const double exit_bearing)
+inline double angleBetween(const double entry_bearing, const double exit_bearing)
 {
     const double offset = 360 - entry_bearing;
     const double rotated_exit = [](double bearing, const double offset) {
@@ -127,8 +128,16 @@ inline double angleBetweenBearings(const double entry_bearing, const double exit
     const auto angle = 540 - rotated_exit;
     return angle >= 360 ? angle - 360 : angle;
 }
-
 } // namespace bearing
+
+// compute the minimum distance in degree between two angles/bearings
+inline double angularDeviation(const double angle_or_bearing, const double from)
+{
+    const double deviation = std::abs(angle_or_bearing - from);
+    return std::min(360 - deviation, deviation);
+}
+
+
 } // namespace util
 } // namespace osrm
 

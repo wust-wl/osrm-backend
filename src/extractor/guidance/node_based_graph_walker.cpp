@@ -1,8 +1,8 @@
 #include "extractor/guidance/node_based_graph_walker.hpp"
 #include "util/coordinate_calculation.hpp"
-#include "util/angle_calculations.hpp"
+#include "util/bearing.hpp"
 
-using osrm::util::guidance::angularDeviation;
+using osrm::util::angularDeviation;
 
 namespace osrm
 {

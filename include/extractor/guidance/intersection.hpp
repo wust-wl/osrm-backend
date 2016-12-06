@@ -36,16 +36,15 @@ struct IntersectionShapeData
 inline auto makeCompareShapeDataByBearing(const double base_bearing)
 {
     return [base_bearing](const auto &lhs, const auto &rhs) {
-        return util::bearing::angleBetweenBearings(base_bearing, lhs.bearing) <
-               util::bearing::angleBetweenBearings(base_bearing, rhs.bearing);
+        return util::bearing::angleBetween(base_bearing, lhs.bearing) <
+               util::bearing::angleBetween(base_bearing, rhs.bearing);
     };
 }
 
 inline auto makeCompareAngularDeviation(const double angle)
 {
     return [angle](const auto &lhs, const auto &rhs) {
-        return util::guidance::angularDeviation(lhs.angle, angle) <
-               util::guidance::angularDeviation(rhs.angle, angle);
+        return util::angularDeviation(lhs.angle, angle) < util::angularDeviation(rhs.angle, angle);
     };
 }
 
@@ -119,7 +118,48 @@ struct ConnectedRoad final : IntersectionViewData
 // small helper function to print the content of a connected road
 std::string toString(const ConnectedRoad &road);
 
-using IntersectionShape = std::vector<IntersectionShapeData>;
+// common operations shared amongst all intersection types
+template <typename Self> struct EnableShapeOps
+{
+    // same as closest turn, but for bearings
+    auto findClosestBearing(double bearing) const
+    {
+        auto comp = makeCompareShapeDataByBearing(bearing);
+        return std::min_element(self()->begin(), self()->end(), comp);
+    }
+
+    // search a given eid in the intersection
+    auto findEid(const EdgeID eid) const
+    {
+        return std::find_if(
+            self()->begin(), self()->end(), [eid](const auto &road) { return road.eid == eid; });
+    }
+
+    // find the maximum value based on a conversion operator and a predefined initial value
+    template <typename UnaryPredicate> auto findMaximum(const UnaryPredicate converter) const
+    {
+        BOOST_ASSERT(!self()->empty());
+        auto initial = converter(self()->front());
+        const auto extract_maximal_value = [&initial](const auto value) {
+            initial = std::max(initial, value);
+            return false;
+        };
+
+        const auto view = *self() | boost::adaptors::transformed(converter);
+        boost::range::find_if(view, extract_maximal_value);
+        return initial;
+    };
+
+  private:
+    auto self() { return static_cast<Self *>(this); }
+    auto self() const { return static_cast<const Self *>(this); }
+};
+
+struct IntersectionShape final : std::vector<IntersectionShapeData>, //
+                                 EnableShapeOps<IntersectionShape>   //
+{
+    using Base = std::vector<IntersectionShapeData>;
+};
 
 // Common operations shared among IntersectionView and Intersections.
 // Inherit to enable those operations on your compatible type. CRTP pattern.
@@ -140,8 +180,8 @@ template <typename Self> struct EnableIntersectionOps
         const auto candidate = std::min_element(
             self()->begin(), self()->end(), [angle, &filter](const auto &lhs, const auto &rhs) {
                 const auto filtered_lhs = filter(lhs), filtered_rhs = filter(rhs);
-                const auto deviation_lhs = util::guidance::angularDeviation(lhs.angle, angle),
-                           deviation_rhs = util::guidance::angularDeviation(rhs.angle, angle);
+                const auto deviation_lhs = util::angularDeviation(lhs.angle, angle),
+                           deviation_rhs = util::angularDeviation(rhs.angle, angle);
                 return std::tie(filtered_lhs, deviation_lhs) <
                        std::tie(filtered_rhs, deviation_rhs);
             });
@@ -150,41 +190,13 @@ template <typename Self> struct EnableIntersectionOps
         return filter(*candidate) ? self()->end() : candidate;
     }
 
-    // same as closest turn, but for bearings
-    auto findClosestBearing(double bearing) const
-    {
-        auto comp = makeCompareShapeDataByBearing(bearing);
-        return std::min_element(self()->begin, self()->end(), comp);
-    }
-
-    // search a given eid in the intersection
-    auto findEid(const EdgeID eid) const
-    {
-        return std::find_if(intersection.begin(), intersection.end(), [eid](const auto &road) {
-            return road.eid == eid;
-        });
-    }
-
-    // find the maximum value based on a conversion operator and a predefined initial value
-    template <typename UnaryPredicate>
-    auto findMaximum(const UnaryPredicate converter, std::result_of<UnaryPredicate> initial)
-    {
-        const auto extract_maximal_value = [&initial](const auto value) {
-            initial = std::max(initial, value);
-            return false;
-        };
-
-        const auto view = *self() | boost::adaptors::transformed(converter);
-        boost::range::find_if(view, extract_maximal_value);
-        return initial;
-    };
-
   private:
     auto self() { return static_cast<Self *>(this); }
     auto self() const { return static_cast<const Self *>(this); }
 };
 
 struct IntersectionView final : std::vector<IntersectionViewData>,      //
+                                EnableShapeOps<IntersectionView>,       //
                                 EnableIntersectionOps<IntersectionView> //
 {
     using Base = std::vector<IntersectionViewData>;
@@ -196,6 +208,7 @@ struct IntersectionView final : std::vector<IntersectionViewData>,      //
 };
 
 struct Intersection final : std::vector<ConnectedRoad>,         //
+                            EnableShapeOps<Intersection>,       //
                             EnableIntersectionOps<Intersection> //
 {
     using Base = std::vector<ConnectedRoad>;
@@ -207,8 +220,6 @@ struct Intersection final : std::vector<ConnectedRoad>,         //
      */
     bool valid() const;
 };
-
-} // namespace intersection_helpers
 
 } // namespace guidance
 } // namespace extractor

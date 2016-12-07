@@ -2,8 +2,8 @@
 #include "extractor/guidance/constants.hpp"
 
 #include "util/coordinate_calculation.hpp"
-#include "util/log.hpp"
 #include "util/guidance/name_announcements.hpp"
+#include "util/log.hpp"
 
 #include <algorithm>
 #include <cstddef>
